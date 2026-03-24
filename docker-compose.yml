@@ -1,8 +1,8 @@
 services:
   emulators:
-    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    image: eclipse-temurin:21-jdk
     command: >
-      sh -c "firebase emulators:start --project demo-local --only auth,firestore"
+      sh -c "apt-get update && apt-get install -y curl && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install -y nodejs && npm install -g firebase-tools && firebase emulators:start --project demo-local --only auth,firestore"
     ports:
       - "4000:4000"   # Emulator UI
       - "8081:8081"   # Firestore
@@ -12,9 +12,10 @@ services:
     working_dir: /root
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4000"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
 
   server:
     build: .
