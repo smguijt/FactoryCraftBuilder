@@ -12,6 +12,7 @@ import (
 )
 
 var (
+	ErrResearchLocked    = errors.New("building type requires research unlock")
 	ErrOccupied          = errors.New("tile already occupied")
 	ErrNoNodeHere        = errors.New("extractor must be placed on a resource node")
 	ErrNodeTaken         = errors.New("a building is already linked to that node")
@@ -54,6 +55,17 @@ func (s *Service) PlaceBuilding(ctx context.Context, playerID, worldID string, r
 	def, ok := s.registry.BuildingByType[req.Type]
 	if !ok {
 		return nil, ErrUnknownBuilding
+	}
+
+	// Research gate
+	if s.researchChecker != nil {
+		unlocked, err := s.researchChecker.IsBuildingUnlocked(ctx, playerID, worldID, req.Type)
+		if err != nil {
+			return nil, fmt.Errorf("check research unlock: %w", err)
+		}
+		if !unlocked {
+			return nil, ErrResearchLocked
+		}
 	}
 
 	// Load world to check bounds

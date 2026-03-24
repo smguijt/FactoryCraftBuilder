@@ -14,17 +14,25 @@ import (
 	"github.com/smguijt/factorycraftbuilder/internal/world"
 )
 
+// BeltTierFn returns the world's current belt tier (1/2/3).
+// Injected at wire-up time to avoid importing the research package.
+type BeltTierFn func(ctx context.Context, playerID, worldID string) (int, error)
+
 // Orchestrator loads, simulates, and persists one tick for a world.
 type Orchestrator struct {
 	repo          *world.Repository
 	registry      *recipe.Registry
 	maxOfflineSec int64
 	fs            *firestore.Client
+	beltTierFn    BeltTierFn // optional; nil = always tier 1
 }
 
 func New(repo *world.Repository, registry *recipe.Registry, fs *firestore.Client, maxOfflineSec int64) *Orchestrator {
 	return &Orchestrator{repo: repo, registry: registry, fs: fs, maxOfflineSec: maxOfflineSec}
 }
+
+// SetBeltTierFn wires the belt-tier lookup after construction.
+func (o *Orchestrator) SetBeltTierFn(fn BeltTierFn) { o.beltTierFn = fn }
 
 // Run advances the simulation to now and returns the updated map snapshot.
 // If the delta is too small to warrant a write, it returns the current snapshot unchanged.
@@ -52,12 +60,19 @@ func (o *Orchestrator) Run(ctx context.Context, playerID, worldID string) (*worl
 		ResearchPoints: snap.Inventory.ResearchPoints,
 	}
 
+	beltTier := 1
+	if o.beltTierFn != nil {
+		if t, err := o.beltTierFn(ctx, snap.World.PlayerID, snap.World.ID); err == nil {
+			beltTier = t
+		}
+	}
+
 	state := simulation.WorldState{
 		World:     *snap.World,
 		Buildings: buildings,
 		Inventory: invCopy,
 		Registry:  o.registry,
-		BeltTier:  1, // Phase 5 will wire player belt tier from research
+		BeltTier:  beltTier,
 	}
 
 	// 3. Run pure simulation

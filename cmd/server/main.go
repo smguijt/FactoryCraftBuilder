@@ -15,6 +15,7 @@ import (
 	"github.com/smguijt/factorycraftbuilder/internal/config"
 	"github.com/smguijt/factorycraftbuilder/internal/player"
 	"github.com/smguijt/factorycraftbuilder/internal/recipe"
+	researchPkg "github.com/smguijt/factorycraftbuilder/internal/research"
 	"github.com/smguijt/factorycraftbuilder/internal/tick"
 	"github.com/smguijt/factorycraftbuilder/internal/world"
 	fsClient "github.com/smguijt/factorycraftbuilder/pkg/firestore"
@@ -27,16 +28,21 @@ func main() {
 
 	cfg := config.Load()
 
-	// Static game data
-	registry, err := recipe.LoadRegistry(static.RecipesJSON)
+	// Recipe registry
+	recipeReg, err := recipe.LoadRegistry(static.RecipesJSON)
 	if err != nil {
 		slog.Error("failed to load recipes.json", "error", err)
 		os.Exit(1)
 	}
-	slog.Info("recipe registry loaded",
-		"recipes", len(registry.Recipes),
-		"items", len(registry.ItemByID),
-	)
+	slog.Info("recipe registry loaded", "recipes", len(recipeReg.Recipes), "items", len(recipeReg.ItemByID))
+
+	// Research registry
+	researchReg, err := researchPkg.LoadRegistry(static.ResearchJSON)
+	if err != nil {
+		slog.Error("failed to load research.json", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("research registry loaded", "nodes", len(researchReg.Nodes))
 
 	ctx := context.Background()
 
@@ -72,8 +78,32 @@ func main() {
 
 	// World layer
 	worldRepo := world.NewRepository(fs)
-	worldSvc := world.NewService(worldRepo, registry, cfg.StartingCoins)
-	tickOrchestrator := tick.New(worldRepo, registry, fs, cfg.MaxOfflineSeconds)
+	worldSvc := world.NewService(worldRepo, recipeReg, cfg.StartingCoins)
+
+	// Research layer — depends on worldRepo.InventoryRef for atomic unlock transactions
+	researchRepo := researchPkg.NewRepository(fs)
+	researchSvc := researchPkg.NewService(researchRepo, researchReg, worldRepo.InventoryRef)
+	researchHandler := researchPkg.NewHandler(researchSvc, func(ctx context.Context, playerID, worldID string) (map[string]int64, error) {
+		inv, err := worldSvc.GetInventory(ctx, playerID, worldID)
+		if err != nil {
+			return nil, err
+		}
+		return inv.TotalDelivered, nil
+	})
+
+	// Wire research checker into world service (breaks the init cycle)
+	worldSvc.SetResearchChecker(researchSvc)
+
+	// Tick orchestrator + belt-tier injection
+	tickOrchestrator := tick.New(worldRepo, recipeReg, fs, cfg.MaxOfflineSeconds)
+	tickOrchestrator.SetBeltTierFn(func(ctx context.Context, playerID, worldID string) (int, error) {
+		wr, err := researchSvc.GetState(ctx, playerID, worldID)
+		if err != nil {
+			return 1, err
+		}
+		return wr.BeltTier, nil
+	})
+
 	worldHandler := world.NewHandler(worldSvc, tickOrchestrator)
 
 	// Router
@@ -118,13 +148,18 @@ func main() {
 			r.Post("/worlds/{worldID}/buildings/{buildingID}/connect", worldHandler.Connect)
 			r.Delete("/worlds/{worldID}/buildings/{buildingID}/connect/{targetID}", worldHandler.Disconnect)
 
-			// Convenience: recipes for a given building type
+			// Convenience: recipes filtered by building type
 			r.Get("/buildings/{buildingType}/recipes", worldHandler.RecipesForBuilding)
 
 			// Inventory
 			r.Get("/worlds/{worldID}/inventory", worldHandler.GetInventory)
 
-			// Static data (no auth required — cacheable)
+			// Research
+			r.Get("/research", researchHandler.GetTree)
+			r.Get("/worlds/{worldID}/research", researchHandler.GetWorldResearch)
+			r.Post("/worlds/{worldID}/research/{nodeID}/unlock", researchHandler.UnlockNode)
+
+			// Static game data (cacheable)
 			r.Get("/recipes", func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Cache-Control", "public, max-age=3600")

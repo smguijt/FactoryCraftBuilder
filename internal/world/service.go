@@ -9,14 +9,23 @@ import (
 	"github.com/smguijt/factorycraftbuilder/internal/recipe"
 )
 
+// ResearchChecker is implemented by research.Service. Defined here to avoid an import cycle.
+type ResearchChecker interface {
+	IsBuildingUnlocked(ctx context.Context, playerID, worldID string, bType recipe.BuildingType) (bool, error)
+}
+
 type Service struct {
-	repo          *Repository
-	registry      *recipe.Registry // exported via field for handlers that need recipe lookups
-	startingCoins int64
+	repo            *Repository
+	registry        *recipe.Registry // exported via field for handlers that need recipe lookups
+	startingCoins   int64
+	researchChecker ResearchChecker // optional; nil = all buildings allowed (useful in tests)
 }
 
 // Registry exposes the loaded recipe registry (e.g. for building-type recipe filtering).
 func (s *Service) Registry() *recipe.Registry { return s.registry }
+
+// SetResearchChecker wires the research checker after construction to break the init cycle.
+func (s *Service) SetResearchChecker(rc ResearchChecker) { s.researchChecker = rc }
 
 func NewService(repo *Repository, registry *recipe.Registry, startingCoins int64) *Service {
 	return &Service{repo: repo, registry: registry, startingCoins: startingCoins}

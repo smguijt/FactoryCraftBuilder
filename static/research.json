@@ -1,0 +1,174 @@
+[
+  {
+    "id": "iron_processing",
+    "name": "Iron Processing",
+    "description": "Smelt iron ore into iron ingots.",
+    "deliveryRequirements": [{ "itemID": "iron_ore", "quantity": 50 }],
+    "researchPointCost": 0,
+    "coinCost": 50,
+    "prerequisites": [],
+    "unlocks": ["smelter", "smelt_iron"]
+  },
+  {
+    "id": "copper_processing",
+    "name": "Copper Processing",
+    "description": "Smelt copper ore into copper ingots.",
+    "deliveryRequirements": [{ "itemID": "copper_ore", "quantity": 50 }],
+    "researchPointCost": 0,
+    "coinCost": 50,
+    "prerequisites": [],
+    "unlocks": ["smelt_copper"]
+  },
+  {
+    "id": "stone_processing",
+    "name": "Stone Processing",
+    "description": "Smelt stone into stone bricks.",
+    "deliveryRequirements": [{ "itemID": "stone", "quantity": 30 }],
+    "researchPointCost": 0,
+    "coinCost": 30,
+    "prerequisites": [],
+    "unlocks": ["smelt_stone"]
+  },
+  {
+    "id": "gold_processing",
+    "name": "Gold Processing",
+    "description": "Smelt gold ore into gold ingots.",
+    "deliveryRequirements": [{ "itemID": "gold_ore", "quantity": 20 }],
+    "researchPointCost": 30,
+    "coinCost": 80,
+    "prerequisites": [],
+    "unlocks": ["smelt_gold"]
+  },
+  {
+    "id": "basic_automation",
+    "name": "Basic Automation",
+    "description": "Unlock splitters and mergers to build branching belt networks.",
+    "deliveryRequirements": [{ "itemID": "iron_ore", "quantity": 100 }],
+    "researchPointCost": 10,
+    "coinCost": 80,
+    "prerequisites": [],
+    "unlocks": ["splitter", "merger"]
+  },
+  {
+    "id": "basic_assembly",
+    "name": "Basic Assembly",
+    "description": "Craft plates, wires, and planks from processed materials.",
+    "deliveryRequirements": [
+      { "itemID": "iron_ingot",   "quantity": 20 },
+      { "itemID": "copper_ingot", "quantity": 20 }
+    ],
+    "researchPointCost": 50,
+    "coinCost": 100,
+    "prerequisites": ["iron_processing", "copper_processing"],
+    "unlocks": ["assembler", "craft_wood_plank", "craft_iron_plate", "craft_copper_wire"]
+  },
+  {
+    "id": "circuit_assembly",
+    "name": "Circuit Assembly",
+    "description": "Craft circuit boards for advanced manufacturing.",
+    "deliveryRequirements": [
+      { "itemID": "iron_plate",  "quantity": 20 },
+      { "itemID": "copper_wire", "quantity": 20 }
+    ],
+    "researchPointCost": 100,
+    "coinCost": 200,
+    "prerequisites": ["basic_assembly"],
+    "unlocks": ["craft_circuit_board"]
+  },
+  {
+    "id": "oil_refining",
+    "name": "Oil Refining",
+    "description": "Process crude oil into petroleum and lubricant.",
+    "deliveryRequirements": [{ "itemID": "crude_oil", "quantity": 30 }],
+    "researchPointCost": 80,
+    "coinCost": 200,
+    "prerequisites": [],
+    "unlocks": ["chemical_plant", "refine_oil"]
+  },
+  {
+    "id": "silicon_processing",
+    "name": "Silicon Processing",
+    "description": "Refine raw silicon into wafers for chip production.",
+    "deliveryRequirements": [
+      { "itemID": "raw_silicon", "quantity": 20 },
+      { "itemID": "petroleum",   "quantity": 10 }
+    ],
+    "researchPointCost": 150,
+    "coinCost": 300,
+    "prerequisites": ["oil_refining"],
+    "unlocks": ["craft_silicon_wafer"]
+  },
+  {
+    "id": "advanced_assembly",
+    "name": "Advanced Assembly",
+    "description": "Multi-input assembly for high-tier components.",
+    "deliveryRequirements": [
+      { "itemID": "circuit_board", "quantity": 10 }
+    ],
+    "researchPointCost": 200,
+    "coinCost": 500,
+    "prerequisites": ["circuit_assembly"],
+    "unlocks": ["advanced_assembler", "craft_advanced_circuit"]
+  },
+  {
+    "id": "microchip_fabrication",
+    "name": "Microchip Fabrication",
+    "description": "Manufacture high-density microchips.",
+    "deliveryRequirements": [
+      { "itemID": "advanced_circuit", "quantity": 5 },
+      { "itemID": "silicon_wafer",    "quantity": 5 }
+    ],
+    "researchPointCost": 400,
+    "coinCost": 1000,
+    "prerequisites": ["advanced_assembly", "silicon_processing"],
+    "unlocks": ["craft_microchip"]
+  },
+  {
+    "id": "belt_speed_1",
+    "name": "Belt Speed I",
+    "description": "Upgrade all conveyor belts to 120 items/min.",
+    "deliveryRequirements": [
+      { "itemID": "iron_plate", "quantity": 100 }
+    ],
+    "researchPointCost": 150,
+    "coinCost": 300,
+    "prerequisites": ["basic_assembly"],
+    "unlocks": ["belt_tier_2"]
+  },
+  {
+    "id": "belt_speed_2",
+    "name": "Belt Speed II",
+    "description": "Upgrade all conveyor belts to 240 items/min.",
+    "deliveryRequirements": [
+      { "itemID": "advanced_circuit", "quantity": 50 }
+    ],
+    "researchPointCost": 500,
+    "coinCost": 1000,
+    "prerequisites": ["belt_speed_1", "advanced_assembly"],
+    "unlocks": ["belt_tier_3"]
+  },
+  {
+    "id": "extractor_tier_2",
+    "name": "Extractor Mk.II",
+    "description": "Allows upgrading extractors to double extraction rate.",
+    "deliveryRequirements": [
+      { "itemID": "iron_ingot", "quantity": 100 }
+    ],
+    "researchPointCost": 200,
+    "coinCost": 400,
+    "prerequisites": ["iron_processing"],
+    "unlocks": ["extractor_tier_2"]
+  },
+  {
+    "id": "extractor_tier_3",
+    "name": "Extractor Mk.III",
+    "description": "Allows upgrading extractors to quadruple extraction rate.",
+    "deliveryRequirements": [
+      { "itemID": "advanced_circuit", "quantity": 50 }
+    ],
+    "researchPointCost": 500,
+    "coinCost": 1000,
+    "prerequisites": ["extractor_tier_2", "advanced_assembly"],
+    "unlocks": ["extractor_tier_3"]
+  }
+]

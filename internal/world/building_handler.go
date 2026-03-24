@@ -138,6 +138,8 @@ func buildingErrStatus(err error) int {
 	switch {
 	case errors.Is(err, ErrNotFound):
 		return http.StatusNotFound
+	case errors.Is(err, ErrResearchLocked):
+		return http.StatusForbidden
 	case errors.Is(err, ErrOccupied),
 		errors.Is(err, ErrNoNodeHere),
 		errors.Is(err, ErrNodeTaken),
@@ -166,6 +168,8 @@ func buildingErrBody(err error) *apierror.APIError {
 		return apierror.ErrNotFound
 	case errors.Is(err, ErrInsufficientFunds):
 		return apierror.ErrInsufficientFunds(err.Error())
+	case errors.Is(err, ErrResearchLocked):
+		return apierror.New(http.StatusForbidden, "research_locked", err.Error())
 	case errors.Is(err, ErrOccupied),
 		errors.Is(err, ErrNoNodeHere),
 		errors.Is(err, ErrNodeTaken),
