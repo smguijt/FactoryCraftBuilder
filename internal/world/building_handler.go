@@ -138,7 +138,8 @@ func buildingErrStatus(err error) int {
 	switch {
 	case errors.Is(err, ErrNotFound):
 		return http.StatusNotFound
-	case errors.Is(err, ErrResearchLocked):
+	case errors.Is(err, ErrResearchLocked),
+		errors.Is(err, ErrTierNotUnlocked):
 		return http.StatusForbidden
 	case errors.Is(err, ErrOccupied),
 		errors.Is(err, ErrNoNodeHere),
@@ -153,7 +154,9 @@ func buildingErrStatus(err error) int {
 		errors.Is(err, ErrTooManyInputs),
 		errors.Is(err, ErrAlreadyConnected),
 		errors.Is(err, ErrSelfConnect),
-		errors.Is(err, ErrConnNotFound):
+		errors.Is(err, ErrConnNotFound),
+		errors.Is(err, ErrNotAnExtractor),
+		errors.Is(err, ErrInvalidExtractorTier):
 		return http.StatusBadRequest
 	case errors.Is(err, ErrInsufficientFunds):
 		return http.StatusPaymentRequired
@@ -170,6 +173,8 @@ func buildingErrBody(err error) *apierror.APIError {
 		return apierror.ErrInsufficientFunds(err.Error())
 	case errors.Is(err, ErrResearchLocked):
 		return apierror.New(http.StatusForbidden, "research_locked", err.Error())
+	case errors.Is(err, ErrTierNotUnlocked):
+		return apierror.New(http.StatusForbidden, "tier_not_unlocked", err.Error())
 	case errors.Is(err, ErrOccupied),
 		errors.Is(err, ErrNoNodeHere),
 		errors.Is(err, ErrNodeTaken),
@@ -183,7 +188,9 @@ func buildingErrBody(err error) *apierror.APIError {
 		errors.Is(err, ErrTooManyInputs),
 		errors.Is(err, ErrAlreadyConnected),
 		errors.Is(err, ErrSelfConnect),
-		errors.Is(err, ErrConnNotFound):
+		errors.Is(err, ErrConnNotFound),
+		errors.Is(err, ErrNotAnExtractor),
+		errors.Is(err, ErrInvalidExtractorTier):
 		return apierror.ErrBadRequest(err.Error())
 	default:
 		return apierror.ErrInternal

@@ -162,6 +162,18 @@ func (s *Service) IsBuildingUnlocked(ctx context.Context, playerID, worldID stri
 	return s.registry.IsBuildingUnlocked(bType, wr.UnlockedNodes), nil
 }
 
+// MaxExtractorTier satisfies world.ResearchChecker.
+func (s *Service) MaxExtractorTier(ctx context.Context, playerID, worldID string) (int, error) {
+	wr, err := s.repo.Get(ctx, playerID, worldID)
+	if err != nil {
+		return 1, err
+	}
+	if wr.MaxExtractorTier < 1 {
+		return 1, nil
+	}
+	return wr.MaxExtractorTier, nil
+}
+
 // helpers for reading Firestore map[string]any values
 
 func asInt64(v any) int64 {

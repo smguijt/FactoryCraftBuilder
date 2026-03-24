@@ -12,6 +12,7 @@ import (
 // ResearchChecker is implemented by research.Service. Defined here to avoid an import cycle.
 type ResearchChecker interface {
 	IsBuildingUnlocked(ctx context.Context, playerID, worldID string, bType recipe.BuildingType) (bool, error)
+	MaxExtractorTier(ctx context.Context, playerID, worldID string) (int, error)
 }
 
 type Service struct {

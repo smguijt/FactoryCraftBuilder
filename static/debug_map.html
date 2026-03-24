@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FactoryCraft — Debug Map</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #111; color: #eee; font-family: monospace; display: flex; height: 100vh; overflow: hidden; }
+#canvas-wrap { flex: 1; position: relative; overflow: hidden; cursor: grab; }
+#canvas-wrap.dragging { cursor: grabbing; }
+canvas { position: absolute; top: 0; left: 0; image-rendering: pixelated; }
+#sidebar { width: 300px; background: #1a1a1a; border-left: 1px solid #333; display: flex; flex-direction: column; }
+#sidebar h2 { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #333; color: #aaa; }
+#detail { padding: 12px; font-size: 11px; line-height: 1.6; overflow-y: auto; flex: 1; white-space: pre-wrap; color: #ccc; }
+#legend { padding: 10px 12px; border-top: 1px solid #333; font-size: 10px; color: #777; }
+#legend div { margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+.swatch { width: 10px; height: 10px; display: inline-block; border-radius: 2px; flex-shrink: 0; }
+#hud { position: absolute; bottom: 8px; left: 8px; font-size: 10px; color: #666; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="canvas-wrap">
+  <canvas id="map"></canvas>
+  <div id="hud">scroll to zoom · drag to pan · click to inspect</div>
+</div>
+<div id="sidebar">
+  <h2 id="sidebar-title">Click a tile to inspect</h2>
+  <div id="detail">—</div>
+  <div id="legend"></div>
+</div>
+
+<script>
+const TILE = 10;
+const MIN_ZOOM = 0.5, MAX_ZOOM = 8;
+
+const worldID = location.pathname.split('/').pop();
+const token   = new URLSearchParams(location.search).get('token') || '';
+
+const canvas = document.getElementById('map');
+const ctx    = canvas.getContext('2d');
+const wrap   = document.getElementById('canvas-wrap');
+const detail = document.getElementById('detail');
+const title  = document.getElementById('sidebar-title');
+
+let snap = null;
+let zoom = 2, panX = 0, panY = 0;
+let dragging = false, dragStartX = 0, dragStartY = 0, panStartX = 0, panStartY = 0;
+
+// ── colours ──────────────────────────────────────────────────────────────────
+const NODE_COLORS = {
+  forest:'#2d6a2d', iron_mine:'#8c8c8c', copper_mine:'#b5651d',
+  stone_mine:'#a0a0a0', gold_mine:'#d4af37', coal_mine:'#2b2b2b',
+  oil_well:'#3a3a5c', silicon_mine:'#c0a060', uranium:'#5c8c3a', wolframite:'#6a4c8c'
+};
+const NODE_LABELS = {
+  forest:'F', iron_mine:'I', copper_mine:'C', stone_mine:'S', gold_mine:'G',
+  coal_mine:'Co', oil_well:'O', silicon_mine:'Si', uranium:'U', wolframite:'W'
+};
+const BLDG_COLORS = {
+  extractor:'#e07030', conveyor:'#f0d060', splitter:'#f0a020', merger:'#d08020',
+  smelter:'#e04040', assembler:'#4080e0', advanced_assembler:'#2050c0',
+  chemical_plant:'#40c080', research_lab:'#c040c0'
+};
+
+// ── load & draw ───────────────────────────────────────────────────────────────
+async function load() {
+  const headers = token ? { Authorization: 'Bearer ' + token } : {};
+  const res = await fetch(`/api/v1/worlds/${worldID}/map`, { headers });
+  if (!res.ok) { detail.textContent = 'Error ' + res.status + ': ' + await res.text(); return; }
+  snap = await res.json();
+  resize();
+  draw();
+}
+
+function resize() {
+  const rect = wrap.getBoundingClientRect();
+  canvas.width  = rect.width;
+  canvas.height = rect.height;
+}
+
+function draw() {
+  if (!snap) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.translate(panX, panY);
+  ctx.scale(zoom, zoom);
+
+  const W = snap.world.width, H = snap.world.height;
+  // Background grid (only when zoomed in enough)
+  if (zoom >= 2) {
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 0.5 / zoom;
+    for (let x = 0; x <= W; x++) { ctx.beginPath(); ctx.moveTo(x*TILE,0); ctx.lineTo(x*TILE,H*TILE); ctx.stroke(); }
+    for (let y = 0; y <= H; y++) { ctx.beginPath(); ctx.moveTo(0,y*TILE); ctx.lineTo(W*TILE,y*TILE); ctx.stroke(); }
+  }
+
+  // Resource nodes
+  for (const n of snap.resourceNodes) {
+    ctx.fillStyle = NODE_COLORS[n.type] || '#555';
+    ctx.fillRect(n.x*TILE, n.y*TILE, TILE, TILE);
+    if (zoom >= 2) {
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.font = `${Math.min(6, TILE*0.6)}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(NODE_LABELS[n.type]||'?', n.x*TILE+TILE/2, n.y*TILE+TILE/2);
+    }
+  }
+
+  // Connection lines
+  const pos = {};
+  for (const b of snap.buildings) pos[b.id] = b;
+  ctx.strokeStyle = 'rgba(255,255,0,0.5)';
+  ctx.lineWidth = 0.8 / zoom;
+  for (const b of snap.buildings) {
+    for (const cid of (b.connections||[])) {
+      const dst = pos[cid];
+      if (!dst) continue;
+      ctx.beginPath();
+      ctx.moveTo(b.x*TILE+TILE/2, b.y*TILE+TILE/2);
+      ctx.lineTo(dst.x*TILE+TILE/2, dst.y*TILE+TILE/2);
+      ctx.stroke();
+    }
+  }
+
+  // Buildings
+  for (const b of snap.buildings) {
+    const color = BLDG_COLORS[b.type] || '#888';
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.92;
+    roundRect(ctx, b.x*TILE+1, b.y*TILE+1, TILE-2, TILE-2, 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    // Direction arrow
+    if (zoom >= 2) drawArrow(b.x, b.y, b.rotation||0);
+  }
+
+  ctx.restore();
+}
+
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x+r, y); c.lineTo(x+w-r, y); c.arcTo(x+w, y, x+w, y+r, r);
+  c.lineTo(x+w, y+h-r); c.arcTo(x+w, y+h, x+w-r, y+h, r);
+  c.lineTo(x+r, y+h); c.arcTo(x, y+h, x, y+h-r, r);
+  c.lineTo(x, y+r); c.arcTo(x, y, x+r, y, r);
+  c.closePath();
+}
+
+function drawArrow(tx, ty, rot) {
+  const cx = tx*TILE + TILE/2, cy = ty*TILE + TILE/2;
+  const r = TILE/2 - 2;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rot * Math.PI / 180);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.beginPath();
+  ctx.moveTo(0, -r); ctx.lineTo(2, 1); ctx.lineTo(-2, 1);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// ── interaction ───────────────────────────────────────────────────────────────
+wrap.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = wrap.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const factor = e.deltaY < 0 ? 1.15 : 1/1.15;
+  const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * factor));
+  panX = mx - (mx - panX) * (newZoom / zoom);
+  panY = my - (my - panY) * (newZoom / zoom);
+  zoom = newZoom;
+  draw();
+}, { passive: false });
+
+wrap.addEventListener('mousedown', e => {
+  dragging = true; wrap.classList.add('dragging');
+  dragStartX = e.clientX; dragStartY = e.clientY;
+  panStartX = panX; panStartY = panY;
+});
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  panX = panStartX + (e.clientX - dragStartX);
+  panY = panStartY + (e.clientY - dragStartY);
+  draw();
+});
+window.addEventListener('mouseup', () => { dragging = false; wrap.classList.remove('dragging'); });
+
+wrap.addEventListener('click', e => {
+  if (!snap) return;
+  const rect = wrap.getBoundingClientRect();
+  const wx = Math.floor((e.clientX - rect.left - panX) / zoom / TILE);
+  const wy = Math.floor((e.clientY - rect.top  - panY) / zoom / TILE);
+
+  // Find entity at tile
+  const bldg = snap.buildings.find(b => b.x === wx && b.y === wy);
+  const node = snap.resourceNodes.find(n => n.x === wx && n.y === wy);
+  const entity = bldg || node;
+
+  if (entity) {
+    title.textContent = `${entity.type}  (${wx}, ${wy})`;
+    detail.textContent = JSON.stringify(entity, null, 2);
+  } else {
+    title.textContent = `Empty tile (${wx}, ${wy})`;
+    detail.textContent = '—';
+  }
+});
+
+window.addEventListener('resize', () => { resize(); draw(); });
+
+// ── legend ────────────────────────────────────────────────────────────────────
+function buildLegend() {
+  const leg = document.getElementById('legend');
+  const entries = [
+    ...Object.entries(NODE_COLORS).map(([k,v]) => [k.replace(/_/g,' '), v]),
+    ...Object.entries(BLDG_COLORS).map(([k,v]) => [k.replace(/_/g,' '), v]),
+  ];
+  leg.innerHTML = entries.map(([name, color]) =>
+    `<div><span class="swatch" style="background:${color}"></span>${name}</div>`
+  ).join('');
+}
+
+buildLegend();
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+steps:
+  # Run tests
+  - name: 'golang:1.22'
+    id: test
+    entrypoint: go
+    args: ['test', './...']
+    env:
+      - 'GOPATH=/go'
+
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: build
+    args:
+      - build
+      - '-t'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/factorycraftbuilder:$COMMIT_SHA'
+      - '-t'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/factorycraftbuilder:latest'
+      - '.'
+
+  # Push to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: push
+    args:
+      - push
+      - '--all-tags'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/factorycraftbuilder'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: deploy
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - factorycraftbuilder
+      - '--image=$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/factorycraftbuilder:$COMMIT_SHA'
+      - '--region=$_REGION'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--set-env-vars=GCP_PROJECT_ID=$PROJECT_ID'
+      - '--service-account=$_SERVICE_ACCOUNT'
+
+substitutions:
+  _REGION: europe-west1
+  _REPO: factorycraftbuilder
+  _SERVICE_ACCOUNT: factorycraftbuilder@$PROJECT_ID.iam.gserviceaccount.com
+
+options:
+  logging: CLOUD_LOGGING_ONLY

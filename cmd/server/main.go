@@ -2,17 +2,23 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"os"
+	"sort"
+	"time"
 
 	firebase "firebase.google.com/go/v4"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
+	"golang.org/x/time/rate"
 	"google.golang.org/api/option"
 
 	"github.com/smguijt/factorycraftbuilder/internal/auth"
 	"github.com/smguijt/factorycraftbuilder/internal/config"
+	"github.com/smguijt/factorycraftbuilder/internal/ctxkeys"
+	"github.com/smguijt/factorycraftbuilder/internal/debug"
 	"github.com/smguijt/factorycraftbuilder/internal/player"
 	"github.com/smguijt/factorycraftbuilder/internal/recipe"
 	researchPkg "github.com/smguijt/factorycraftbuilder/internal/research"
@@ -35,6 +41,18 @@ func main() {
 		os.Exit(1)
 	}
 	slog.Info("recipe registry loaded", "recipes", len(recipeReg.Recipes), "items", len(recipeReg.ItemByID))
+
+	// Pre-serialize items list (sorted by ID for stable output).
+	itemsList := make([]*recipe.Item, 0, len(recipeReg.ItemByID))
+	for _, item := range recipeReg.ItemByID {
+		itemsList = append(itemsList, item)
+	}
+	sort.Slice(itemsList, func(i, j int) bool { return itemsList[i].ID < itemsList[j].ID })
+	itemsJSON, err := json.Marshal(itemsList)
+	if err != nil {
+		slog.Error("failed to serialize items", "error", err)
+		os.Exit(1)
+	}
 
 	// Research registry
 	researchReg, err := researchPkg.LoadRegistry(static.ResearchJSON)
@@ -105,10 +123,12 @@ func main() {
 	})
 
 	worldHandler := world.NewHandler(worldSvc, tickOrchestrator)
+	debugHandler := debug.NewHandler(worldSvc, static.DebugMapHTML)
 
 	// Router
 	r := chi.NewRouter()
 	r.Use(chiMiddleware.Recoverer)
+	r.Use(chiMiddleware.RequestSize(64 * 1024)) // 64 KB max body
 	r.Use(appMiddleware.Logger)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -122,6 +142,10 @@ func main() {
 
 		r.Group(func(r chi.Router) {
 			r.Use(auth.Middleware(authClient))
+			r.Use(appMiddleware.PerPlayerRateLimit(
+				rate.Limit(10), 30, 5*time.Minute,
+				func(req *http.Request) string { return ctxkeys.PlayerID(req.Context()) },
+			))
 
 			// Players
 			r.Get("/players/me", playerHandler.GetMe)
@@ -165,8 +189,24 @@ func main() {
 				w.Header().Set("Cache-Control", "public, max-age=3600")
 				_, _ = w.Write(static.RecipesJSON)
 			})
+			r.Get("/items", func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Cache-Control", "public, max-age=3600")
+				_, _ = w.Write(itemsJSON)
+			})
+
+			// Debug routes — authenticated, disabled in production
+			if cfg.DebugRoutes {
+				r.Get("/worlds/{worldID}/debug/map.svg", debugHandler.SVG)
+			}
 		})
 	})
+
+	if cfg.DebugRoutes {
+		// HTML viewer has no auth — uses ?token= query param
+		r.Get("/debug/map/{worldID}", debugHandler.HTMLViewer)
+		slog.Info("debug routes enabled")
+	}
 
 	addr := ":" + cfg.Port
 	slog.Info("server starting", "addr", addr)

@@ -27,7 +27,10 @@ var (
 	ErrTooManyInputs     = errors.New("merger target already has 3 incoming connections")
 	ErrAlreadyConnected  = errors.New("buildings are already connected")
 	ErrSelfConnect       = errors.New("cannot connect a building to itself")
-	ErrConnNotFound      = errors.New("connection not found")
+	ErrConnNotFound          = errors.New("connection not found")
+	ErrNotAnExtractor        = errors.New("extractorTier can only be set on extractors")
+	ErrTierNotUnlocked       = errors.New("extractor tier not yet unlocked via research")
+	ErrInvalidExtractorTier  = errors.New("extractorTier must be 1, 2, or 3")
 )
 
 // PlaceBuildingRequest is the input for placing a building.
@@ -40,8 +43,9 @@ type PlaceBuildingRequest struct {
 
 // UpdateBuildingRequest is the input for patching a building.
 type UpdateBuildingRequest struct {
-	RecipeID *string `json:"recipeID"` // nil = no change
-	IsActive *bool   `json:"isActive"` // nil = no change
+	RecipeID      *string `json:"recipeID"`      // nil = no change
+	IsActive      *bool   `json:"isActive"`      // nil = no change
+	ExtractorTier *int    `json:"extractorTier"` // nil = no change; only valid for extractors
 }
 
 // PlaceBuilding validates placement rules and deducts costs, then creates the building.
@@ -192,6 +196,26 @@ func (s *Service) UpdateBuilding(ctx context.Context, playerID, worldID, buildin
 
 	if req.IsActive != nil {
 		b.IsActive = *req.IsActive
+	}
+
+	if req.ExtractorTier != nil {
+		tier := *req.ExtractorTier
+		if b.Type != recipe.BuildingExtractor {
+			return nil, ErrNotAnExtractor
+		}
+		if tier < 1 || tier > 3 {
+			return nil, ErrInvalidExtractorTier
+		}
+		if tier > 1 && s.researchChecker != nil {
+			maxTier, err := s.researchChecker.MaxExtractorTier(ctx, playerID, worldID)
+			if err != nil {
+				return nil, fmt.Errorf("check extractor tier research: %w", err)
+			}
+			if tier > maxTier {
+				return nil, ErrTierNotUnlocked
+			}
+		}
+		b.ExtractorTier = tier
 	}
 
 	if err := s.repo.SaveBuilding(ctx, playerID, worldID, b); err != nil {
