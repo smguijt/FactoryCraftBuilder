@@ -1,6 +1,7 @@
 package world
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -10,12 +11,18 @@ import (
 	"github.com/smguijt/factorycraftbuilder/pkg/apierror"
 )
 
-type Handler struct {
-	svc *Service
+// Ticker is implemented by tick.Orchestrator. Defined here to avoid an import cycle.
+type Ticker interface {
+	Run(ctx context.Context, playerID, worldID string) (*MapSnapshot, error)
 }
 
-func NewHandler(svc *Service) *Handler {
-	return &Handler{svc: svc}
+type Handler struct {
+	svc    *Service
+	ticker Ticker
+}
+
+func NewHandler(svc *Service, ticker Ticker) *Handler {
+	return &Handler{svc: svc, ticker: ticker}
 }
 
 // GET /worlds
@@ -82,12 +89,12 @@ func (h *Handler) DeleteWorld(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// GET /worlds/{worldID}/map
+// GET /worlds/{worldID}/map — triggers a tick before returning.
 func (h *Handler) GetMap(w http.ResponseWriter, r *http.Request) {
 	playerID := ctxkeys.PlayerID(r.Context())
 	worldID := chi.URLParam(r, "worldID")
 
-	snap, err := h.svc.GetMapSnapshot(r.Context(), playerID, worldID)
+	snap, err := h.runTick(r.Context(), playerID, worldID)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			apierror.Write(w, apierror.ErrNotFound)
@@ -147,9 +154,30 @@ func (h *Handler) GetInventory(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, inv)
 }
 
-// POST /worlds/{worldID}/tick — placeholder; implemented in Phase 4.
+// POST /worlds/{worldID}/tick — explicitly advance simulation to now.
 func (h *Handler) Tick(w http.ResponseWriter, r *http.Request) {
-	apierror.Write(w, apierror.New(http.StatusNotImplemented, "not_implemented", "tick not yet implemented"))
+	playerID := ctxkeys.PlayerID(r.Context())
+	worldID := chi.URLParam(r, "worldID")
+
+	snap, err := h.runTick(r.Context(), playerID, worldID)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			apierror.Write(w, apierror.ErrNotFound)
+			return
+		}
+		apierror.Write(w, apierror.ErrInternal)
+		return
+	}
+	writeJSON(w, http.StatusOK, snap)
+}
+
+// runTick runs the simulation tick if a ticker is configured, otherwise falls back
+// to a plain snapshot (allows the handler to work before tick is wired in tests).
+func (h *Handler) runTick(ctx context.Context, playerID, worldID string) (*MapSnapshot, error) {
+	if h.ticker != nil {
+		return h.ticker.Run(ctx, playerID, worldID)
+	}
+	return h.svc.GetMapSnapshot(ctx, playerID, worldID)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

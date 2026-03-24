@@ -12,13 +12,14 @@ import (
 	"google.golang.org/api/option"
 
 	"github.com/smguijt/factorycraftbuilder/internal/auth"
-	"github.com/smguijt/factorycraftbuilder/static"
 	"github.com/smguijt/factorycraftbuilder/internal/config"
 	"github.com/smguijt/factorycraftbuilder/internal/player"
 	"github.com/smguijt/factorycraftbuilder/internal/recipe"
+	"github.com/smguijt/factorycraftbuilder/internal/tick"
 	"github.com/smguijt/factorycraftbuilder/internal/world"
 	fsClient "github.com/smguijt/factorycraftbuilder/pkg/firestore"
 	appMiddleware "github.com/smguijt/factorycraftbuilder/pkg/middleware"
+	"github.com/smguijt/factorycraftbuilder/static"
 )
 
 func main() {
@@ -72,7 +73,8 @@ func main() {
 	// World layer
 	worldRepo := world.NewRepository(fs)
 	worldSvc := world.NewService(worldRepo, registry, cfg.StartingCoins)
-	worldHandler := world.NewHandler(worldSvc)
+	tickOrchestrator := tick.New(worldRepo, registry, fs, cfg.MaxOfflineSeconds)
+	worldHandler := world.NewHandler(worldSvc, tickOrchestrator)
 
 	// Router
 	r := chi.NewRouter()

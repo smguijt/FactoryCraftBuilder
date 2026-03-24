@@ -27,6 +27,16 @@ func (r *Repository) worldRef(playerID, worldID string) *firestore.DocumentRef {
 		Collection("worlds").Doc(worldID)
 }
 
+// WorldRef exposes the world document ref for external transactional writes (e.g. tick orchestrator).
+func (r *Repository) WorldRef(playerID, worldID string) *firestore.DocumentRef {
+	return r.worldRef(playerID, worldID)
+}
+
+// InventoryRef exposes the inventory state ref for external transactional writes.
+func (r *Repository) InventoryRef(playerID, worldID string) *firestore.DocumentRef {
+	return r.worldRef(playerID, worldID).Collection("inventory").Doc("state")
+}
+
 // ---- World ----
 
 func (r *Repository) CreateWorld(ctx context.Context, w *World, nodes []*ResourceNode) error {

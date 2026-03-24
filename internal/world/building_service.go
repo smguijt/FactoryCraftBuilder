@@ -102,14 +102,15 @@ func (s *Service) PlaceBuilding(ctx context.Context, playerID, worldID string, r
 	now := time.Now().UTC()
 
 	b := &Building{
-		ID:           buildingID,
-		WorldID:      worldID,
-		Type:         req.Type,
-		X:            req.X,
-		Y:            req.Y,
-		Rotation:     req.Rotation,
-		LinkedNodeID: linkedNodeID,
-		ExtractorTier: 1,
+		ID:             buildingID,
+		WorldID:        worldID,
+		Type:           req.Type,
+		X:              req.X,
+		Y:              req.Y,
+		Rotation:       req.Rotation,
+		LinkedNodeID:   linkedNodeID,
+		LinkedNodeType: linkedNodeType,
+		ExtractorTier:  1,
 		InputSlots:   map[string]int64{},
 		OutputSlots:  initOutputSlots(s.registry, req.Type, linkedNodeType),
 		Connections:  []string{},

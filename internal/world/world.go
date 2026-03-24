@@ -36,7 +36,8 @@ type Building struct {
 	Y            int                  `json:"y" firestore:"y"`
 	Rotation     int                  `json:"rotation" firestore:"rotation"` // 0, 90, 180, 270
 	RecipeID     string               `json:"recipeID,omitempty" firestore:"recipeID,omitempty"`
-	LinkedNodeID string               `json:"linkedNodeID,omitempty" firestore:"linkedNodeID,omitempty"`
+	LinkedNodeID   string                   `json:"linkedNodeID,omitempty" firestore:"linkedNodeID,omitempty"`
+	LinkedNodeType recipe.ResourceNodeType  `json:"linkedNodeType,omitempty" firestore:"linkedNodeType,omitempty"`
 	// ExtractorTier is 1/2/3; only relevant for extractors.
 	ExtractorTier int                  `json:"extractorTier" firestore:"extractorTier"`
 	InputSlots    map[string]int64     `json:"inputSlots" firestore:"inputSlots"`
