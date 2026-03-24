@@ -1,0 +1,31 @@
+services:
+  emulators:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    command: >
+      sh -c "firebase emulators:start --project demo-local --only auth,firestore"
+    ports:
+      - "4000:4000"   # Emulator UI
+      - "8081:8081"   # Firestore
+      - "9099:9099"   # Auth
+    volumes:
+      - ./firebase.json:/root/firebase.json:ro
+    working_dir: /root
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  server:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - GCP_PROJECT_ID=demo-local
+      - FIRESTORE_EMULATOR_HOST=emulators:8081
+      - FIREBASE_AUTH_EMULATOR_HOST=emulators:9099
+    depends_on:
+      emulators:
+        condition: service_healthy
