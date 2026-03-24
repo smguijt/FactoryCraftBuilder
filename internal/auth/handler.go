@@ -2,11 +2,11 @@ package auth
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/smguijt/factorycraftbuilder/internal/ctxkeys"
 	"github.com/smguijt/factorycraftbuilder/internal/player"
-	"github.com/smguijt/factorycraftbuilder/pkg/apierror"
 )
 
 type Handler struct {
@@ -24,6 +24,8 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	playerID := ctxkeys.PlayerID(r.Context())
 	email := ctxkeys.PlayerEmail(r.Context())
 
+	slog.Info("login attempt", "playerID", playerID, "email", email)
+
 	var body struct {
 		DisplayName string `json:"displayName"`
 	}
@@ -31,7 +33,13 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	p, err := h.players.Upsert(r.Context(), playerID, email, body.DisplayName)
 	if err != nil {
-		apierror.Write(w, apierror.ErrInternal)
+		slog.Error("failed to upsert player", "playerID", playerID, "email", email, "error", err.Error())
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"code":    "internal_error",
+			"message": err.Error(),
+		})
 		return
 	}
 
