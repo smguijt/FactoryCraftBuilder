@@ -11,9 +11,12 @@ import (
 
 type Service struct {
 	repo          *Repository
-	registry      *recipe.Registry
+	registry      *recipe.Registry // exported via field for handlers that need recipe lookups
 	startingCoins int64
 }
+
+// Registry exposes the loaded recipe registry (e.g. for building-type recipe filtering).
+func (s *Service) Registry() *recipe.Registry { return s.registry }
 
 func NewService(repo *Repository, registry *recipe.Registry, startingCoins int64) *Service {
 	return &Service{repo: repo, registry: registry, startingCoins: startingCoins}

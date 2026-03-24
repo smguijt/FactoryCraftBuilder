@@ -147,6 +147,11 @@ func (h *Handler) GetInventory(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, inv)
 }
 
+// POST /worlds/{worldID}/tick — placeholder; implemented in Phase 4.
+func (h *Handler) Tick(w http.ResponseWriter, r *http.Request) {
+	apierror.Write(w, apierror.New(http.StatusNotImplemented, "not_implemented", "tick not yet implemented"))
+}
+
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

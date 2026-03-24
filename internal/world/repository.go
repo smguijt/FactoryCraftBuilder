@@ -277,3 +277,66 @@ func (r *Repository) BuildingAtPosition(ctx context.Context, playerID, worldID s
 	var b Building
 	return &b, docs[0].DataTo(&b)
 }
+
+// BuildingLinkedToNode returns the extractor linked to a node, or nil if none.
+func (r *Repository) BuildingLinkedToNode(ctx context.Context, playerID, worldID, nodeID string) (*Building, error) {
+	iter := r.worldRef(playerID, worldID).Collection("buildings").
+		Where("linkedNodeID", "==", nodeID).
+		Limit(1).
+		Documents(ctx)
+	docs, err := iter.GetAll()
+	if err != nil {
+		return nil, err
+	}
+	if len(docs) == 0 {
+		return nil, nil
+	}
+	var b Building
+	return &b, docs[0].DataTo(&b)
+}
+
+// CountIncomingConnections counts how many buildings have targetID in their connections.
+func (r *Repository) CountIncomingConnections(ctx context.Context, playerID, worldID, targetID string) (int, error) {
+	iter := r.worldRef(playerID, worldID).Collection("buildings").
+		Where("connections", "array-contains", targetID).
+		Documents(ctx)
+	docs, err := iter.GetAll()
+	if err != nil {
+		return 0, err
+	}
+	return len(docs), nil
+}
+
+// RemoveFromAllConnections removes buildingID from every building's connections list.
+func (r *Repository) RemoveFromAllConnections(ctx context.Context, playerID, worldID, buildingID string) error {
+	iter := r.worldRef(playerID, worldID).Collection("buildings").
+		Where("connections", "array-contains", buildingID).
+		Documents(ctx)
+	docs, err := iter.GetAll()
+	if err != nil {
+		return err
+	}
+	if len(docs) == 0 {
+		return nil
+	}
+
+	bw := r.fs.BulkWriter(ctx)
+	for _, doc := range docs {
+		var b Building
+		if err := doc.DataTo(&b); err != nil {
+			return err
+		}
+		newConns := make([]string, 0, len(b.Connections))
+		for _, c := range b.Connections {
+			if c != buildingID {
+				newConns = append(newConns, c)
+			}
+		}
+		b.Connections = newConns
+		if _, err := bw.Set(doc.Ref, &b); err != nil {
+			return err
+		}
+	}
+	bw.End()
+	return nil
+}

@@ -101,10 +101,23 @@ func main() {
 			r.Get("/worlds/{worldID}", worldHandler.GetWorld)
 			r.Delete("/worlds/{worldID}", worldHandler.DeleteWorld)
 			r.Get("/worlds/{worldID}/map", worldHandler.GetMap)
+			r.Post("/worlds/{worldID}/tick", worldHandler.Tick)
 
 			// Nodes
 			r.Get("/worlds/{worldID}/nodes", worldHandler.ListNodes)
 			r.Get("/worlds/{worldID}/nodes/{nodeID}", worldHandler.GetNode)
+
+			// Buildings
+			r.Get("/worlds/{worldID}/buildings", worldHandler.ListBuildings)
+			r.Post("/worlds/{worldID}/buildings", worldHandler.PlaceBuilding)
+			r.Get("/worlds/{worldID}/buildings/{buildingID}", worldHandler.GetBuilding)
+			r.Patch("/worlds/{worldID}/buildings/{buildingID}", worldHandler.UpdateBuilding)
+			r.Delete("/worlds/{worldID}/buildings/{buildingID}", worldHandler.DeleteBuilding)
+			r.Post("/worlds/{worldID}/buildings/{buildingID}/connect", worldHandler.Connect)
+			r.Delete("/worlds/{worldID}/buildings/{buildingID}/connect/{targetID}", worldHandler.Disconnect)
+
+			// Convenience: recipes for a given building type
+			r.Get("/buildings/{buildingType}/recipes", worldHandler.RecipesForBuilding)
 
 			// Inventory
 			r.Get("/worlds/{worldID}/inventory", worldHandler.GetInventory)
