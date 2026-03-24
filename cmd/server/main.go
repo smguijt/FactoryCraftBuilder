@@ -12,17 +12,30 @@ import (
 	"google.golang.org/api/option"
 
 	"github.com/smguijt/factorycraftbuilder/internal/auth"
+	"github.com/smguijt/factorycraftbuilder/static"
 	"github.com/smguijt/factorycraftbuilder/internal/config"
 	"github.com/smguijt/factorycraftbuilder/internal/player"
+	"github.com/smguijt/factorycraftbuilder/internal/recipe"
+	"github.com/smguijt/factorycraftbuilder/internal/world"
 	fsClient "github.com/smguijt/factorycraftbuilder/pkg/firestore"
 	appMiddleware "github.com/smguijt/factorycraftbuilder/pkg/middleware"
 )
 
 func main() {
-	// Structured JSON logging — Cloud Logging parses this automatically
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 
 	cfg := config.Load()
+
+	// Static game data
+	registry, err := recipe.LoadRegistry(static.RecipesJSON)
+	if err != nil {
+		slog.Error("failed to load recipes.json", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("recipe registry loaded",
+		"recipes", len(registry.Recipes),
+		"items", len(registry.ItemByID),
+	)
 
 	ctx := context.Background()
 
@@ -50,11 +63,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Layers
+	// Player layer
 	playerRepo := player.NewRepository(fs)
 	playerSvc := player.NewService(playerRepo)
 	playerHandler := player.NewHandler(playerSvc)
 	authHandler := auth.NewHandler(playerSvc)
+
+	// World layer
+	worldRepo := world.NewRepository(fs)
+	worldSvc := world.NewService(worldRepo, registry, cfg.StartingCoins)
+	worldHandler := world.NewHandler(worldSvc)
 
 	// Router
 	r := chi.NewRouter()
@@ -62,19 +80,41 @@ func main() {
 	r.Use(appMiddleware.Logger)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	})
 
 	r.Route("/api/v1", func(r chi.Router) {
-		// Auth (requires Firebase token in header)
 		r.With(auth.Middleware(authClient)).Post("/auth/login", authHandler.Login)
 
-		// Authenticated routes
 		r.Group(func(r chi.Router) {
 			r.Use(auth.Middleware(authClient))
+
+			// Players
 			r.Get("/players/me", playerHandler.GetMe)
 			r.Patch("/players/me", playerHandler.PatchMe)
+
+			// Worlds
+			r.Get("/worlds", worldHandler.ListWorlds)
+			r.Post("/worlds", worldHandler.CreateWorld)
+			r.Get("/worlds/{worldID}", worldHandler.GetWorld)
+			r.Delete("/worlds/{worldID}", worldHandler.DeleteWorld)
+			r.Get("/worlds/{worldID}/map", worldHandler.GetMap)
+
+			// Nodes
+			r.Get("/worlds/{worldID}/nodes", worldHandler.ListNodes)
+			r.Get("/worlds/{worldID}/nodes/{nodeID}", worldHandler.GetNode)
+
+			// Inventory
+			r.Get("/worlds/{worldID}/inventory", worldHandler.GetInventory)
+
+			// Static data (no auth required — cacheable)
+			r.Get("/recipes", func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Cache-Control", "public, max-age=3600")
+				_, _ = w.Write(static.RecipesJSON)
+			})
 		})
 	})
 

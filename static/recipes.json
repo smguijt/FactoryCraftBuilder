@@ -1,0 +1,166 @@
+{
+  "extractionRecipes": [
+    { "nodeType": "forest",       "outputItem": "wood",           "ratePerMin": 120 },
+    { "nodeType": "iron_mine",    "outputItem": "iron_ore",       "ratePerMin": 60  },
+    { "nodeType": "copper_mine",  "outputItem": "copper_ore",     "ratePerMin": 60  },
+    { "nodeType": "stone_mine",   "outputItem": "stone",          "ratePerMin": 60  },
+    { "nodeType": "gold_mine",    "outputItem": "gold_ore",       "ratePerMin": 30  },
+    { "nodeType": "coal_mine",    "outputItem": "coal",           "ratePerMin": 60  },
+    { "nodeType": "oil_well",     "outputItem": "crude_oil",      "ratePerMin": 30  },
+    { "nodeType": "silicon_mine", "outputItem": "raw_silicon",    "ratePerMin": 30  },
+    { "nodeType": "uranium",      "outputItem": "uranium_ore",    "ratePerMin": 10  },
+    { "nodeType": "wolframite",   "outputItem": "wolframite_ore", "ratePerMin": 10  }
+  ],
+  "recipes": [
+    {
+      "id": "smelt_iron",
+      "name": "Iron Ingot",
+      "factoryType": "smelter",
+      "craftingTimeSec": 3.0,
+      "inputs":  [{ "itemID": "iron_ore",  "quantity": 2 }],
+      "outputs": [{ "itemID": "iron_ingot","quantity": 1, "isPrimary": true }]
+    },
+    {
+      "id": "smelt_copper",
+      "name": "Copper Ingot",
+      "factoryType": "smelter",
+      "craftingTimeSec": 3.0,
+      "inputs":  [{ "itemID": "copper_ore",   "quantity": 2 }],
+      "outputs": [{ "itemID": "copper_ingot", "quantity": 1, "isPrimary": true }]
+    },
+    {
+      "id": "smelt_stone",
+      "name": "Stone Brick",
+      "factoryType": "smelter",
+      "craftingTimeSec": 2.0,
+      "inputs":  [{ "itemID": "stone",      "quantity": 2 }],
+      "outputs": [{ "itemID": "stone_brick","quantity": 1, "isPrimary": true }]
+    },
+    {
+      "id": "smelt_gold",
+      "name": "Gold Ingot",
+      "factoryType": "smelter",
+      "craftingTimeSec": 5.0,
+      "inputs":  [{ "itemID": "gold_ore",  "quantity": 2 }],
+      "outputs": [{ "itemID": "gold_ingot","quantity": 1, "isPrimary": true }]
+    },
+    {
+      "id": "craft_wood_plank",
+      "name": "Wood Plank",
+      "factoryType": "assembler",
+      "craftingTimeSec": 1.0,
+      "inputs":  [{ "itemID": "wood",       "quantity": 2 }],
+      "outputs": [{ "itemID": "wood_plank", "quantity": 1, "isPrimary": true }]
+    },
+    {
+      "id": "craft_iron_plate",
+      "name": "Iron Plate",
+      "factoryType": "assembler",
+      "craftingTimeSec": 2.0,
+      "inputs":  [{ "itemID": "iron_ingot", "quantity": 2 }],
+      "outputs": [{ "itemID": "iron_plate", "quantity": 1, "isPrimary": true }]
+    },
+    {
+      "id": "craft_copper_wire",
+      "name": "Copper Wire",
+      "factoryType": "assembler",
+      "craftingTimeSec": 1.5,
+      "inputs":  [{ "itemID": "copper_ingot", "quantity": 1 }],
+      "outputs": [{ "itemID": "copper_wire",  "quantity": 2, "isPrimary": true }]
+    },
+    {
+      "id": "craft_circuit_board",
+      "name": "Circuit Board",
+      "factoryType": "assembler",
+      "craftingTimeSec": 4.0,
+      "inputs":  [
+        { "itemID": "iron_plate",  "quantity": 2 },
+        { "itemID": "copper_wire", "quantity": 3 }
+      ],
+      "outputs": [{ "itemID": "circuit_board", "quantity": 1, "isPrimary": true }]
+    },
+    {
+      "id": "craft_advanced_circuit",
+      "name": "Advanced Circuit",
+      "factoryType": "advanced_assembler",
+      "craftingTimeSec": 8.0,
+      "inputs":  [
+        { "itemID": "circuit_board", "quantity": 2 },
+        { "itemID": "iron_plate",    "quantity": 2 },
+        { "itemID": "copper_wire",   "quantity": 4 }
+      ],
+      "outputs": [{ "itemID": "advanced_circuit", "quantity": 1, "isPrimary": true }]
+    },
+    {
+      "id": "refine_oil",
+      "name": "Oil Refining",
+      "factoryType": "chemical_plant",
+      "craftingTimeSec": 5.0,
+      "inputs":  [{ "itemID": "crude_oil",  "quantity": 3 }],
+      "outputs": [
+        { "itemID": "petroleum",  "quantity": 2, "isPrimary": true },
+        { "itemID": "lubricant",  "quantity": 1, "isPrimary": false }
+      ]
+    },
+    {
+      "id": "craft_silicon_wafer",
+      "name": "Silicon Wafer",
+      "factoryType": "chemical_plant",
+      "craftingTimeSec": 6.0,
+      "inputs":  [
+        { "itemID": "raw_silicon", "quantity": 2 },
+        { "itemID": "petroleum",   "quantity": 1 }
+      ],
+      "outputs": [{ "itemID": "silicon_wafer", "quantity": 1, "isPrimary": true }]
+    },
+    {
+      "id": "craft_microchip",
+      "name": "Microchip",
+      "factoryType": "advanced_assembler",
+      "craftingTimeSec": 12.0,
+      "inputs":  [
+        { "itemID": "silicon_wafer",    "quantity": 2 },
+        { "itemID": "advanced_circuit", "quantity": 1 },
+        { "itemID": "gold_ingot",       "quantity": 1 }
+      ],
+      "outputs": [{ "itemID": "microchip", "quantity": 1, "isPrimary": true }]
+    }
+  ],
+  "items": [
+    { "id": "wood",             "name": "Wood",             "sellPrice": 1,   "researchValue": 0, "buyPrice": 1   },
+    { "id": "iron_ore",         "name": "Iron Ore",         "sellPrice": 2,   "researchValue": 0, "buyPrice": 2   },
+    { "id": "copper_ore",       "name": "Copper Ore",       "sellPrice": 2,   "researchValue": 0, "buyPrice": 2   },
+    { "id": "stone",            "name": "Stone",            "sellPrice": 1,   "researchValue": 0, "buyPrice": 1   },
+    { "id": "gold_ore",         "name": "Gold Ore",         "sellPrice": 5,   "researchValue": 1, "buyPrice": 5   },
+    { "id": "coal",             "name": "Coal",             "sellPrice": 2,   "researchValue": 0, "buyPrice": 2   },
+    { "id": "crude_oil",        "name": "Crude Oil",        "sellPrice": 3,   "researchValue": 0, "buyPrice": 3   },
+    { "id": "raw_silicon",      "name": "Raw Silicon",      "sellPrice": 4,   "researchValue": 1, "buyPrice": 4   },
+    { "id": "uranium_ore",      "name": "Uranium Ore",      "sellPrice": 10,  "researchValue": 3, "buyPrice": 10  },
+    { "id": "wolframite_ore",   "name": "Wolframite Ore",   "sellPrice": 10,  "researchValue": 3, "buyPrice": 10  },
+    { "id": "wood_plank",       "name": "Wood Plank",       "sellPrice": 3,   "researchValue": 1, "buyPrice": 3   },
+    { "id": "iron_ingot",       "name": "Iron Ingot",       "sellPrice": 8,   "researchValue": 2, "buyPrice": 7   },
+    { "id": "copper_ingot",     "name": "Copper Ingot",     "sellPrice": 8,   "researchValue": 2, "buyPrice": 7   },
+    { "id": "stone_brick",      "name": "Stone Brick",      "sellPrice": 4,   "researchValue": 1, "buyPrice": 3   },
+    { "id": "gold_ingot",       "name": "Gold Ingot",       "sellPrice": 20,  "researchValue": 5, "buyPrice": 18  },
+    { "id": "iron_plate",       "name": "Iron Plate",       "sellPrice": 15,  "researchValue": 3, "buyPrice": 13  },
+    { "id": "copper_wire",      "name": "Copper Wire",      "sellPrice": 10,  "researchValue": 2, "buyPrice": 9   },
+    { "id": "circuit_board",    "name": "Circuit Board",    "sellPrice": 50,  "researchValue": 10,"buyPrice": 45  },
+    { "id": "petroleum",        "name": "Petroleum",        "sellPrice": 12,  "researchValue": 3, "buyPrice": 11  },
+    { "id": "lubricant",        "name": "Lubricant",        "sellPrice": 8,   "researchValue": 2, "buyPrice": 7   },
+    { "id": "raw_silicon",      "name": "Raw Silicon",      "sellPrice": 4,   "researchValue": 1, "buyPrice": 4   },
+    { "id": "silicon_wafer",    "name": "Silicon Wafer",    "sellPrice": 30,  "researchValue": 8, "buyPrice": 27  },
+    { "id": "advanced_circuit", "name": "Advanced Circuit", "sellPrice": 120, "researchValue": 25,"buyPrice": 110 },
+    { "id": "microchip",        "name": "Microchip",        "sellPrice": 500, "researchValue": 100,"buyPrice": 450}
+  ],
+  "buildings": [
+    { "type": "extractor",          "placementCost": { "coins": 10,  "items": [] } },
+    { "type": "conveyor",           "placementCost": { "coins": 2,   "items": [] } },
+    { "type": "splitter",           "placementCost": { "coins": 15,  "items": [] } },
+    { "type": "merger",             "placementCost": { "coins": 15,  "items": [] } },
+    { "type": "smelter",            "placementCost": { "coins": 30,  "items": [] } },
+    { "type": "assembler",          "placementCost": { "coins": 50,  "items": [{"itemID":"iron_plate","quantity":5},{"itemID":"circuit_board","quantity":2}] } },
+    { "type": "advanced_assembler", "placementCost": { "coins": 150, "items": [{"itemID":"advanced_circuit","quantity":3},{"itemID":"iron_plate","quantity":10}] } },
+    { "type": "chemical_plant",     "placementCost": { "coins": 100, "items": [{"itemID":"iron_plate","quantity":8},{"itemID":"circuit_board","quantity":4}] } },
+    { "type": "research_lab",       "placementCost": { "coins": 50,  "items": [] } }
+  ]
+}
